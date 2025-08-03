@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19b724751705fa54589743278090dd09, type: 3}
+  m_Name: GitStatusOverlayConfig
+  m_EditorClassIdentifier: 
+  iconAdded: {fileID: 2800000, guid: 3e52825ff4eff4f4e9d01d18b072d882, type: 3}
+  iconModified: {fileID: 2800000, guid: c3de4610e307fe749be0ff4930a717af, type: 3}
+  iconIgnored: {fileID: 2800000, guid: b20dbb92597eb4a40b42361875d16d2e, type: 3}
+  iconRenamed: {fileID: 2800000, guid: 6518124dff99b5f41a7e56d552b606af, type: 3}
+  iconSize: 16
+  iconOpacity: 1
+  iconStatus: 511
+  iconPosition: 2
+  showIconsForFolders: 1

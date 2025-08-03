@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 51f11ed47a2d61a4cb222759e40a4415
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - m_ViewDataDictionary: {instanceID: 0}
+  - iconAddedDefault: {fileID: 2800000, guid: 3e52825ff4eff4f4e9d01d18b072d882, type: 3}
+  - iconModifiedDefault: {fileID: 2800000, guid: c3de4610e307fe749be0ff4930a717af, type: 3}
+  - iconIgnoredDefault: {fileID: 2800000, guid: b20dbb92597eb4a40b42361875d16d2e, type: 3}
+  - iconRenamedDefault: {fileID: 2800000, guid: 6518124dff99b5f41a7e56d552b606af, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

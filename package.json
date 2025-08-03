@@ -1,0 +1,13 @@
+{
+    "name": "com.caesiumgames.gitstatusoverlay",
+    "displayName": "Git Status Overlay",
+    "version": "1.0.0",
+    "unity": "6000.0",
+    "description": "Git Status Overlay is a Unity Editor extension that displays Git status icons directly in the Project window, helping you visualize which assets are modified, added, ignored, or renamed in your repository.",
+    "author": {
+        "name": "Caesium Games",
+        "email": "contact@caesiumgames.com",
+        "url": "https://caesiumgames.com/"
+    },
+    "dependencies": {}
+}
