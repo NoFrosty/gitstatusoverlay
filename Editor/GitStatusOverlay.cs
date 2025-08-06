@@ -68,6 +68,15 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         /// </summary>
         static void UpdateLoop()
         {
+            if (config == null)
+            {
+                var guids = AssetDatabase.FindAssets("t:GitStatusOverlayConfig");
+                if (guids.Length > 0)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                    config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
+                }
+            }
             if (EditorApplication.timeSinceStartup > nextUpdateTime)
             {
                 RefreshGitStatus();
