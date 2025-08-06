@@ -66,7 +66,7 @@ All Right reserved - Caesium Games
 
 ## Credits
 
-Developed by Caesium Games.
+Developed by Caesium Games. Icons used in this project are from Flaticon and are subject to their license.
 
 ---
 
