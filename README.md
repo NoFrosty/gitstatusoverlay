@@ -58,15 +58,15 @@
 - If icons do not appear, ensure your config asset is created and assigned.
 - Make sure Git is installed and accessible from the command line.
 - Only files inside the `Assets/` folder are tracked for overlays.
-- Make sure you project is using Git.
+- Make sure your project is using Git.
 
 ## License
 
-All Right reserved - Caesium Games
+All Rights Reserved - Caesium Games
 
 ## Credits
 
-Developed by Caesium Games. Icons used in this project are from Flaticon and are subject to their license.
+Developed by Caesium Games.
 
 ---
 

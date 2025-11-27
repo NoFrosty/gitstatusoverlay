@@ -1,18 +1,43 @@
 namespace CaesiumGames.Editor.GitStatusOverlay
 {
+    /// <summary>
+    /// Represents the various Git statuses that can be applied to files and folders.
+    /// Multiple statuses can be combined using bitwise operations.
+    /// </summary>
     [System.Flags]
     public enum GitStatus
     {
-        None = 0,        // Aucun changement
-        Untracked = 1 << 0,   // Fichier non suivi
-        Modified = 1 << 1,   // Modifié
-        Staged = 1 << 2,   // Ajouté à l'index
-        Deleted = 1 << 3,   // Supprimé
-        Renamed = 1 << 4,   // Renommé
-        Copied = 1 << 5,   // Copié
-        Conflicted = 1 << 6,   // Conflit de merge
-        Ignored = 1 << 7,   // Ignoré par .gitignore
-        Error = 1 << 8,   // Erreur ou état inconnu
+        /// <summary>No changes detected.</summary>
+        None = 0,
+        
+        /// <summary>Untracked file (not yet added to Git).</summary>
+        Untracked = 1 << 0,
+        
+        /// <summary>Modified file with uncommitted changes.</summary>
+        Modified = 1 << 1,
+        
+        /// <summary>File added to the staging area (index).</summary>
+        Staged = 1 << 2,
+        
+        /// <summary>File deleted from the working directory.</summary>
+        Deleted = 1 << 3,
+        
+        /// <summary>File renamed (Git detected rename).</summary>
+        Renamed = 1 << 4,
+        
+        /// <summary>File copied.</summary>
+        Copied = 1 << 5,
+        
+        /// <summary>File has merge conflicts.</summary>
+        Conflicted = 1 << 6,
+        
+        /// <summary>File ignored by .gitignore.</summary>
+        Ignored = 1 << 7,
+        
+        /// <summary>Error or unknown state.</summary>
+        Error = 1 << 8,
+        
+        /// <summary>File moved (Unity-specific detection via GUID matching).</summary>
+        Moved = 1 << 9,
     }
-
 }
