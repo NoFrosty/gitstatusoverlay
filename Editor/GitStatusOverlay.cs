@@ -43,15 +43,25 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         /// The current overlay configuration. Contains icon assignments and display settings.
         /// </summary>
         private static GitStatusOverlayConfig config;
+        
+        /// <summary>
+        /// Tracks whether we've attempted to load the config yet.
+        /// </summary>
+        private static bool configLoadAttempted = false;
+        
+        /// <summary>
+        /// Time when the config should be loaded (delayed after editor startup).
+        /// </summary>
+        private static double configLoadTime = 0;
 
         /// <summary>
         /// Static constructor: Sets up overlay and periodic refresh on Unity Editor load.
         /// </summary>
         static GitStatusOverlay()
         {
-            LoadConfig();
+            // Delay config loading by 1 second to allow AssetDatabase to fully initialize
+            configLoadTime = EditorApplication.timeSinceStartup + 1.0;
             EditorApplication.projectWindowItemOnGUI += OnProjectWindowItemGUI;
-            RefreshGitStatus();
             EditorApplication.update += UpdateLoop;
         }
 
@@ -65,30 +75,42 @@ namespace CaesiumGames.Editor.GitStatusOverlay
             
             // First, search for user config in Assets folder (highest priority - for overrides)
             string[] guids = AssetDatabase.FindAssets("t:GitStatusOverlayConfig");
+            UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Found {guids.Length} config files via GUID search");
+            
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
+                UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Checking path: {path}");
                 if (path.StartsWith("Assets/"))
                 {
                     config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
-                    if (config != null) return;
+                    if (config != null)
+                    {
+                        UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Loaded user config from Assets: {path}");
+                        return;
+                    }
                 }
             }
             
             // Second, try loading the package default config with direct path
             const string packageConfigPath = "Packages/com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset";
+            UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Attempting direct load from: {packageConfigPath}");
             config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(packageConfigPath);
             
             if (config != null)
             {
+                UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Successfully loaded package config from direct path");
                 return;
             }
             
             // Third, try alternative package path (in case of nested Packages folder)
-            var test = AssetDatabase.LoadAssetAtPath("Packages/Packages/com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset", typeof(GitStatusOverlayConfig));
+            const string altPackagePath = "Packages/Packages/com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset";
+            UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Attempting alternative path: {altPackagePath}");
+            var test = AssetDatabase.LoadAssetAtPath(altPackagePath, typeof(GitStatusOverlayConfig));
             if (test != null)
             {
                 config = test as GitStatusOverlayConfig;
+                UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Loaded from alternative nested Packages path");
                 return;
             }
             
@@ -99,13 +121,18 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                 if (path.StartsWith("Packages/"))
                 {
                     config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
-                    if (config != null) return;
+                    if (config != null)
+                    {
+                        UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Loaded package config from GUID search: {path}");
+                        return;
+                    }
                 }
             }
             
             // Last resort: create a new config in Assets if none found
             if (config == null)
             {
+                UnityEngine.Debug.LogWarning("[GitStatusOverlay] LoadConfig: No config found anywhere, creating new one in Assets/Editor/GitStatusOverlay/");
                 GitStatusOverlayConfig asset = ScriptableObject.CreateInstance<GitStatusOverlayConfig>();
                 string directory = "Assets/Editor/GitStatusOverlay";
                 
@@ -118,6 +145,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
                 config = asset;
+                UnityEngine.Debug.Log($"[GitStatusOverlay] LoadConfig: Created new config in Assets");
             }
         }
 
@@ -153,6 +181,15 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         /// </summary>
         private static void UpdateLoop()
         {
+            // Handle delayed config loading
+            if (!configLoadAttempted && EditorApplication.timeSinceStartup > configLoadTime)
+            {
+                configLoadAttempted = true;
+                LoadConfig();
+                RefreshGitStatus();
+                nextUpdateTime = EditorApplication.timeSinceStartup + UpdateInterval;
+            }
+            
             if (EditorApplication.timeSinceStartup > nextUpdateTime)
             {
                 RefreshGitStatus();
