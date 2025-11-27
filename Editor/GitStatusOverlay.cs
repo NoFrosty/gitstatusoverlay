@@ -57,49 +57,55 @@ namespace CaesiumGames.Editor.GitStatusOverlay
 
         /// <summary>
         /// Loads the overlay configuration asset, or creates one if missing.
-        /// Priority: 1) User config in Assets, 2) Package default config, 3) Create new in Assets
+        /// Priority: 1) User config in Assets (for overrides), 2) Package default config
         /// </summary>
         private static void LoadConfig()
         {
-            string[] guids = AssetDatabase.FindAssets("t:GitStatusOverlayConfig", new string[] { "Packages" });
+            config = null;
             
-            UnityEngine.Debug.Log($"[GitStatusOverlay] Found {guids.Length} GitStatusOverlayConfig assets");
-            
-            // First, try to find user config in Assets folder
+            // First, search for user config in Assets folder (highest priority - for overrides)
+            string[] guids = AssetDatabase.FindAssets("t:GitStatusOverlayConfig");
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
-                UnityEngine.Debug.Log($"[GitStatusOverlay] Checking path: {path}");
                 if (path.StartsWith("Assets/"))
                 {
                     config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
-                    if (config != null)
-                    {
-                        UnityEngine.Debug.Log($"[GitStatusOverlay] Loaded user config from: {path}");
-                        return;
-                    }
+                    if (config != null) return;
                 }
             }
             
-            // Second, try to find package default config
+            // Second, try loading the package default config with direct path
+            const string packageConfigPath = "Packages/com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset";
+            config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(packageConfigPath);
+            
+            if (config != null)
+            {
+                return;
+            }
+            
+            // Third, try alternative package path (in case of nested Packages folder)
+            var test = AssetDatabase.LoadAssetAtPath("Packages/Packages/com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset", typeof(GitStatusOverlayConfig));
+            if (test != null)
+            {
+                config = test as GitStatusOverlayConfig;
+                return;
+            }
+            
+            // Fourth, search for any package config via GUID search
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (path.StartsWith("Packages/com.caesiumgames.gitstatusoverlay/"))
+                if (path.StartsWith("Packages/"))
                 {
                     config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
-                    if (config != null)
-                    {
-                        UnityEngine.Debug.Log($"[GitStatusOverlay] Loaded package config from: {path}");
-                        return;
-                    }
+                    if (config != null) return;
                 }
             }
             
-            // Third, if no config found anywhere, create a new one in Assets
+            // Last resort: create a new config in Assets if none found
             if (config == null)
             {
-                UnityEngine.Debug.LogWarning("[GitStatusOverlay] No config found, creating new one in Assets/Editor/GitStatusOverlay/");
                 GitStatusOverlayConfig asset = ScriptableObject.CreateInstance<GitStatusOverlayConfig>();
                 string directory = "Assets/Editor/GitStatusOverlay";
                 
@@ -110,6 +116,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                 
                 AssetDatabase.CreateAsset(asset, $"{directory}/GitStatusOverlayConfig.asset");
                 AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
                 config = asset;
             }
         }
