@@ -24,11 +24,24 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         
         [Tooltip("Icon displayed for moved files (different folder).")]
         public Texture2D iconMoved;
+        
+        [Tooltip("Icon displayed for files with changes available in origin.")]
+        public Texture2D iconOriginAvailable;
+        
+        [Tooltip("Icon displayed for files with local commits ready to push.")]
+        public Texture2D iconPushAvailable;
+        
+        [Tooltip("Icon displayed for files with potential conflicts (modified locally and in origin).")]
+        public Texture2D iconWarning;
 
         [Header("Display Settings")]
-        [Tooltip("Size of overlay icons in pixels.")]
+        [Tooltip("Size of overlay icons in pixels for list view (when files are shown as lines).")]
         [Range(8, 32)]
-        public int iconSize = 16;
+        public int iconSizeListView = 16;
+        
+        [Tooltip("Size of overlay icons in pixels for icon view (when files are shown with large previews).")]
+        [Range(8, 64)]
+        public int iconSizeIconView = 24;
         
         [Tooltip("Opacity of overlay icons (0 = transparent, 1 = opaque).")]
         [Range(0f, 1f)]
@@ -41,24 +54,45 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         [Tooltip("Which Git statuses should display icons. Use flags to combine multiple statuses.")]
         public GitStatus iconStatus = GitStatus.Modified | GitStatus.Staged | GitStatus.Untracked | 
                                       GitStatus.Renamed | GitStatus.Moved | GitStatus.Deleted | GitStatus.Conflicted | 
-                                      GitStatus.Error | GitStatus.Copied | GitStatus.Ignored;
+                                      GitStatus.Error | GitStatus.Copied | GitStatus.Ignored | GitStatus.OriginAvailable | 
+                                      GitStatus.PushAvailable | GitStatus.Warning;
 
         [Header("Folder Options")]
         [Tooltip("Show status icons on folders based on their contents.")]
         public bool showIconsForFolders = true;
+
+        [Header("Remote Tracking Options")]
+        [Tooltip("Enable automatic fetching from remote to check for origin changes.")]
+        public bool enableAutoFetch = false;
+        
+        [Tooltip("Time interval (in seconds) between automatic fetches.")]
+        [Range(60, 3600)]
+        public int autoFetchInterval = 300;
+        
+        [Tooltip("Show icon for files with commits not yet pushed to origin.")]
+        public bool showPushAvailable = false;
+        
+        [Tooltip("Show warning icon for files modified both locally and in origin.")]
+        public bool detectPotentialConflicts = true;
 
         /// <summary>
         /// Resets all configuration values to their defaults.
         /// </summary>
         public void Reset()
         {
-            iconSize = 16;
+            iconSizeListView = 16;
+            iconSizeIconView = 24;
             iconOpacity = 1.0f;
             iconStatus = GitStatus.Modified | GitStatus.Staged | GitStatus.Untracked | 
                         GitStatus.Renamed | GitStatus.Moved | GitStatus.Deleted | GitStatus.Conflicted | 
-                        GitStatus.Error | GitStatus.Copied | GitStatus.Ignored;
+                        GitStatus.Error | GitStatus.Copied | GitStatus.Ignored | GitStatus.OriginAvailable | 
+                        GitStatus.PushAvailable | GitStatus.Warning;
             iconPosition = IconPosition.TopRight;
             showIconsForFolders = true;
+            enableAutoFetch = false;
+            autoFetchInterval = 300;
+            showPushAvailable = false;
+            detectPotentialConflicts = true;
             
             // Note: Icons are not reset as they may be assigned from package resources
         }

@@ -39,5 +39,14 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         
         /// <summary>File moved (Unity-specific detection via GUID matching).</summary>
         Moved = 1 << 9,
+        
+        /// <summary>File has changes in remote origin that can be fetched.</summary>
+        OriginAvailable = 1 << 10,
+        
+        /// <summary>File has local commits that can be pushed to origin.</summary>
+        PushAvailable = 1 << 11,
+        
+        /// <summary>Warning: File is modified locally and also modified in origin (potential conflict).</summary>
+        Warning = 1 << 12,
     }
 }

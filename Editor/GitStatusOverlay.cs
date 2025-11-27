@@ -101,6 +101,11 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         /// The next time (in editor time) to refresh Git status.
         /// </summary>
         private static double nextUpdateTime = 0;
+        
+        /// <summary>
+        /// The next time (in editor time) to fetch from remote.
+        /// </summary>
+        private static double nextFetchTime = 0;
 
         /// <summary>
         /// Update interval in seconds for automatic Git status refresh.
@@ -117,6 +122,12 @@ namespace CaesiumGames.Editor.GitStatusOverlay
             {
                 RefreshGitStatus();
                 nextUpdateTime = EditorApplication.timeSinceStartup + UpdateInterval;
+            }
+            
+            if (config != null && config.enableAutoFetch && EditorApplication.timeSinceStartup > nextFetchTime)
+            {
+                FetchFromRemote();
+                nextFetchTime = EditorApplication.timeSinceStartup + config.autoFetchInterval;
             }
         }
 
@@ -165,11 +176,332 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                     ParseGitStatusOutput(output);
                     
                     DetectUnityRenames();
+                    
+                    if (config != null && (config.showPushAvailable || config.detectPotentialConflicts))
+                    {
+                        CheckRemoteStatus();
+                    }
                 }
             }
             catch (Exception ex)
             {
                 UnityEngine.Debug.LogError($"[GitStatusOverlay] Error refreshing Git status: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+        
+        /// <summary>
+        /// Fetches updates from the remote repository without merging.
+        /// </summary>
+        private static void FetchFromRemote()
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("git", "fetch")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = GetProjectRoot()
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    if (p == null)
+                    {
+                        UnityEngine.Debug.LogWarning("[GitStatusOverlay] Failed to start Git fetch process.");
+                        return;
+                    }
+
+                    p.WaitForExit();
+
+                    if (p.ExitCode == 0)
+                    {
+                        RefreshGitStatus();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[GitStatusOverlay] Error fetching from remote: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Checks for files that have commits not pushed to origin and files modified in origin.
+        /// </summary>
+        private static void CheckRemoteStatus()
+        {
+            if (!config.showPushAvailable && !config.detectPotentialConflicts) return;
+            
+            try
+            {
+                string currentBranch = GetCurrentBranch();
+                if (string.IsNullOrEmpty(currentBranch)) return;
+                
+                // Check if remote exists
+                if (!HasRemote())
+                {
+                    return;
+                }
+                
+                string remoteBranch = $"origin/{currentBranch}";
+                
+                // Check if the remote branch exists
+                if (!RemoteBranchExists(remoteBranch))
+                {
+                    return;
+                }
+                
+                if (config.showPushAvailable)
+                {
+                    CheckUnpushedCommits(currentBranch, remoteBranch);
+                }
+                
+                if (config.detectPotentialConflicts)
+                {
+                    CheckOriginChanges(remoteBranch);
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[GitStatusOverlay] Error checking remote status: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Gets the current Git branch name.
+        /// </summary>
+        private static string GetCurrentBranch()
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("git", "rev-parse --abbrev-ref HEAD")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = GetProjectRoot()
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    if (p == null) return null;
+                    
+                    string output = p.StandardOutput.ReadToEnd().Trim();
+                    p.WaitForExit();
+                    
+                    return p.ExitCode == 0 ? output : null;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Checks if the repository has any remote configured.
+        /// </summary>
+        private static bool HasRemote()
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("git", "remote")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = GetProjectRoot()
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    if (p == null) return false;
+                    
+                    string output = p.StandardOutput.ReadToEnd().Trim();
+                    p.WaitForExit();
+                    
+                    return p.ExitCode == 0 && !string.IsNullOrEmpty(output);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Checks if a specific remote branch exists.
+        /// </summary>
+        private static bool RemoteBranchExists(string remoteBranch)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("git", $"rev-parse --verify {remoteBranch}")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = GetProjectRoot()
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    if (p == null) return false;
+                    
+                    p.WaitForExit();
+                    
+                    return p.ExitCode == 0;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Checks for commits that exist locally but not on the remote.
+        /// </summary>
+        private static void CheckUnpushedCommits(string currentBranch, string remoteBranch)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("git", $"log {remoteBranch}..{currentBranch} --name-only --pretty=format:")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = GetProjectRoot()
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    if (p == null) return;
+                    
+                    string output = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit();
+                    
+                    if (p.ExitCode != 0) return;
+                    
+                    string[] files = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string file in files)
+                    {
+                        string path = file.Trim().Replace("\\", "/");
+                        if (IsValidAssetPath(path))
+                        {
+                            AddOrUpdateStatus(path, GitStatus.PushAvailable);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[GitStatusOverlay] Error checking unpushed commits: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Checks for files modified in origin that differ from local.
+        /// Only marks files that have changes in origin that we don't have locally.
+        /// </summary>
+        private static void CheckOriginChanges(string remoteBranch)
+        {
+            try
+            {
+                // Check for files that are different between origin and local
+                // Use remote..HEAD to find files that exist in remote but not in our local branch
+                ProcessStartInfo psi = new ProcessStartInfo("git", $"diff --name-only {remoteBranch}...HEAD")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = GetProjectRoot()
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    if (p == null) return;
+                    
+                    string output = p.StandardOutput.ReadToEnd();
+                    string error = p.StandardError.ReadToEnd();
+                    p.WaitForExit();
+                    
+                    if (p.ExitCode != 0)
+                    {
+                        // If there's an error, don't mark any files
+                        return;
+                    }
+                    
+                    // Also check if there are commits in origin that we don't have
+                    if (!HasIncomingCommits(remoteBranch))
+                    {
+                        // No incoming commits from origin, so no need to mark files
+                        return;
+                    }
+                    
+                    string[] files = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string file in files)
+                    {
+                        string path = file.Trim().Replace("\\", "/");
+                        if (IsValidAssetPath(path))
+                        {
+                            string key = path.ToLower();
+                            AddOrUpdateStatus(path, GitStatus.OriginAvailable);
+                            
+                            if (gitStatuses.TryGetValue(key, out GitStatus status))
+                            {
+                                if ((status & GitStatus.Modified) != 0)
+                                {
+                                    AddOrUpdateStatus(path, GitStatus.Warning);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[GitStatusOverlay] Error checking origin changes: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Checks if there are incoming commits from the remote branch.
+        /// </summary>
+        private static bool HasIncomingCommits(string remoteBranch)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("git", $"log HEAD..{remoteBranch} --oneline")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = GetProjectRoot()
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    if (p == null) return false;
+                    
+                    string output = p.StandardOutput.ReadToEnd().Trim();
+                    p.WaitForExit();
+                    
+                    // If there's output, there are incoming commits
+                    return p.ExitCode == 0 && !string.IsNullOrEmpty(output);
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -586,24 +918,21 @@ namespace CaesiumGames.Editor.GitStatusOverlay
             string path = AssetDatabase.GUIDToAssetPath(guid).ToLower();
             if (!path.StartsWith("assets/")) return;
 
-            float size = config.iconSize;
-            Rect iconRect = GetIconRect(selectionRect, size, config.iconPosition);
-
             // Handle folder overlay
             if (Directory.Exists(path))
             {
-                DrawFolderOverlay(path, iconRect);
+                DrawFolderOverlay(path, selectionRect);
                 return;
             }
 
             // Handle file overlay
-            DrawFileOverlay(path, iconRect);
+            DrawFileOverlay(path, selectionRect);
         }
 
         /// <summary>
         /// Draws overlay icon for folders based on the status of their contents.
         /// </summary>
-        private static void DrawFolderOverlay(string folderPath, Rect iconRect)
+        private static void DrawFolderOverlay(string folderPath, Rect selectionRect)
         {
             if (!config.showIconsForFolders) return;
 
@@ -636,6 +965,9 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                 }
             }
 
+            float size = GetIconSizeForRect(selectionRect);
+            Rect iconRect = GetIconRect(selectionRect, size, config.iconPosition);
+
             // Show "added" icon if all files are untracked (new folder)
             if (hasUntracked && allUntracked && config.iconAdded != null)
             {
@@ -651,36 +983,51 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         /// <summary>
         /// Draws overlay icon for individual files based on their Git status.
         /// </summary>
-        private static void DrawFileOverlay(string filePath, Rect iconRect)
+        private static void DrawFileOverlay(string filePath, Rect selectionRect)
         {
             if (!gitStatuses.TryGetValue(filePath, out GitStatus status)) return;
             if (!ShouldShowStatusIcon(status)) return;
 
-            Texture2D icon = GetIconForStatus(status);
-            if (icon != null)
+            var icons = GetIconsForStatus(status);
+            if (icons.Count == 0) return;
+            
+            float size = GetIconSizeForRect(selectionRect);
+            const float iconSpacing = 2f;
+            
+            for (int i = 0; i < icons.Count; i++)
             {
-                DrawIcon(iconRect, icon, config.iconOpacity);
+                Rect iconRect = GetIconRect(selectionRect, size, config.iconPosition, i, iconSpacing);
+                DrawIcon(iconRect, icons[i], config.iconOpacity);
             }
         }
 
         /// <summary>
-        /// Gets the appropriate icon for a given Git status.
-        /// Priority: Untracked > Modified > Ignored > Moved > Renamed.
+        /// Gets all appropriate icons for a given Git status, in priority order.
+        /// Returns multiple icons when a file has multiple statuses.
         /// </summary>
-        private static Texture2D GetIconForStatus(GitStatus status)
+        private static System.Collections.Generic.List<Texture2D> GetIconsForStatus(GitStatus status)
         {
-            if ((status & GitStatus.Untracked) != 0)
-                return config.iconAdded;
-            if ((status & GitStatus.Modified) != 0)
-                return config.iconModified;
-            if ((status & GitStatus.Ignored) != 0)
-                return config.iconIgnored;
-            if ((status & GitStatus.Moved) != 0)
-                return config.iconMoved;
-            if ((status & GitStatus.Renamed) != 0)
-                return config.iconRenamed;
+            var icons = new System.Collections.Generic.List<Texture2D>();
             
-            return null;
+            // Priority order: Warning > Untracked > Modified > OriginAvailable > PushAvailable > Ignored > Moved > Renamed
+            if ((status & GitStatus.Warning) != 0 && config.iconWarning != null)
+                icons.Add(config.iconWarning);
+            if ((status & GitStatus.Untracked) != 0 && config.iconAdded != null)
+                icons.Add(config.iconAdded);
+            if ((status & GitStatus.Modified) != 0 && config.iconModified != null)
+                icons.Add(config.iconModified);
+            if ((status & GitStatus.OriginAvailable) != 0 && config.iconOriginAvailable != null)
+                icons.Add(config.iconOriginAvailable);
+            if ((status & GitStatus.PushAvailable) != 0 && config.iconPushAvailable != null)
+                icons.Add(config.iconPushAvailable);
+            if ((status & GitStatus.Ignored) != 0 && config.iconIgnored != null)
+                icons.Add(config.iconIgnored);
+            if ((status & GitStatus.Moved) != 0 && config.iconMoved != null)
+                icons.Add(config.iconMoved);
+            if ((status & GitStatus.Renamed) != 0 && config.iconRenamed != null)
+                icons.Add(config.iconRenamed);
+            
+            return icons;
         }
 
         /// <summary>
@@ -693,6 +1040,23 @@ namespace CaesiumGames.Editor.GitStatusOverlay
             if (status == GitStatus.None) return false;
             GitStatus mask = config.iconStatus;
             return (status & mask) != 0;
+        }
+
+        /// <summary>
+        /// Determines the appropriate icon size based on the selection rectangle dimensions.
+        /// Detects whether Unity is in list view or icon view mode.
+        /// </summary>
+        /// <param name="selectionRect">The rectangle of the Project window item.</param>
+        /// <returns>The icon size to use for the current view mode.</returns>
+        private static float GetIconSizeForRect(Rect selectionRect)
+        {
+            // In list view, the rect height is typically smaller (around 16-20 pixels)
+            // In icon view, the rect is larger and more square (64+ pixels)
+            // We use a threshold of 32 pixels to distinguish between the two modes
+            const float viewModeThreshold = 32f;
+            
+            bool isIconView = selectionRect.height > viewModeThreshold;
+            return isIconView ? config.iconSizeIconView : config.iconSizeListView;
         }
 
         /// <summary>
@@ -716,17 +1080,21 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         /// <param name="selectionRect">The rectangle of the Project window item.</param>
         /// <param name="size">The size of the icon.</param>
         /// <param name="position">The desired position of the icon.</param>
+        /// <param name="iconIndex">The index of the icon when displaying multiple icons.</param>
+        /// <param name="iconSpacing">Spacing between multiple icons.</param>
         /// <returns>A rectangle representing the icon's position and size.</returns>
-        private static Rect GetIconRect(Rect selectionRect, float size, IconPosition position)
+        private static Rect GetIconRect(Rect selectionRect, float size, IconPosition position, int iconIndex = 0, float iconSpacing = 0f)
         {
             const float padding = 2f;
             float x = selectionRect.x;
             float y = selectionRect.y;
+            
+            float offset = iconIndex * (size + iconSpacing);
 
             switch (position)
             {
                 case IconPosition.TopLeft:
-                    x += padding;
+                    x += padding + offset;
                     y += padding;
                     break;
                 case IconPosition.TopCenter:
@@ -734,7 +1102,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                     y += padding;
                     break;
                 case IconPosition.TopRight:
-                    x += selectionRect.width - size - padding;
+                    x += selectionRect.width - size - padding - offset;
                     y += padding;
                     break;
                 case IconPosition.MiddleLeft:
@@ -746,11 +1114,11 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                     y += (selectionRect.height - size) / 2;
                     break;
                 case IconPosition.MiddleRight:
-                    x += selectionRect.width - size - padding;
+                    x += selectionRect.width - size - padding - offset;
                     y += (selectionRect.height - size) / 2;
                     break;
                 case IconPosition.BottomLeft:
-                    x += padding;
+                    x += padding + offset;
                     y += selectionRect.height - size - padding;
                     break;
                 case IconPosition.BottomCenter:
@@ -758,7 +1126,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                     y += selectionRect.height - size - padding;
                     break;
                 case IconPosition.BottomRight:
-                    x += selectionRect.width - size - padding;
+                    x += selectionRect.width - size - padding - offset;
                     y += selectionRect.height - size - padding;
                     break;
             }
