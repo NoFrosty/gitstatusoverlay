@@ -199,6 +199,11 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                 {
                     ParseOrdinaryEntry(entry);
                 }
+                // Renamed/copied entry - format: "2 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path><sep><origPath>"
+                else if (entry.StartsWith("2 "))
+                {
+                    ParseRenamedEntry(entry, ref i, output);
+                }
                 // Untracked file - format: "? <path>"
                 else if (entry.StartsWith("? "))
                 {
@@ -295,6 +300,60 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         }
 
         /// <summary>
+        /// Parses a renamed/copied entry from Git status porcelain v2.
+        /// Format: "2 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path><sep><origPath>"
+        /// The path and origPath are in the next null-terminated field.
+        /// </summary>
+        private static void ParseRenamedEntry(string entry, ref int i, string output)
+        {
+            // Extract XY status codes
+            string[] parts = entry.Split(' ');
+            if (parts.Length < 9) return;
+            
+            string xy = parts[1];
+            char x = xy.Length > 0 ? xy[0] : ' ';
+            
+            // Read the next null-terminated field which contains "<path><tab><origPath>"
+            int next = output.IndexOf('\0', i);
+            if (next == -1) return;
+            
+            string pathField = output.Substring(i, next - i);
+            i = next + 1;
+            
+            // Split by tab to get newPath and oldPath
+            string[] paths = pathField.Split('\t');
+            if (paths.Length < 2) return;
+            
+            string newPath = paths[0].Trim().Replace("\\", "/");
+            string oldPath = paths[1].Trim().Replace("\\", "/");
+            
+            if (!IsValidAssetPath(newPath)) return;
+            
+            string newKey = newPath.ToLower();
+            
+            // Check if the file was moved to a different folder or just renamed
+            string newFolder = Path.GetDirectoryName(newPath).Replace("\\", "/");
+            string oldFolder = Path.GetDirectoryName(oldPath).Replace("\\", "/");
+            
+            GitStatus status = GitStatus.None;
+            
+            if (newFolder.Equals(oldFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                // Same folder = Renamed
+                status = GitStatus.Renamed;
+                if (x == 'A' || x == 'R') status |= GitStatus.Staged;
+            }
+            else
+            {
+                // Different folder = Moved
+                status = GitStatus.Moved;
+                if (x == 'A' || x == 'R') status |= GitStatus.Staged;
+            }
+            
+            AddOrUpdateStatus(newPath, status);
+        }
+
+        /// <summary>
         /// Parses an untracked file entry from Git status.
         /// </summary>
         private static void ParseUntrackedEntry(string entry)
@@ -351,8 +410,10 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         }
 
         /// <summary>
-        /// Detects Unity file renames by comparing GUIDs from .meta files.
-        /// When a file is deleted and a new file appears with the same GUID, it's a rename.
+        /// Detects Unity file renames and moves by comparing GUIDs from .meta files.
+        /// When a file is deleted and a new file appears with the same GUID:
+        /// - If in the same folder (only filename changed) = Renamed
+        /// - If in a different folder = Moved
         /// </summary>
         private static void DetectUnityRenames()
         {
@@ -372,7 +433,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
 
                     if (untrackedGuid == deletedGuid)
                     {
-                        // Found a rename! Update the status
+                        // Found a rename/move! Determine which one
                         string untrackedKey = untrackedPath.ToLower();
                         string deletedKey = deletedPath.ToLower();
                         
@@ -386,8 +447,20 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                             gitStatuses.Remove(deletedKey);
                         }
 
-                        // Mark the new path as renamed
-                        gitStatuses[untrackedKey] = GitStatus.Renamed | GitStatus.Moved;
+                        // Check if the file was moved to a different folder or just renamed
+                        string untrackedFolder = Path.GetDirectoryName(untrackedPath).Replace("\\", "/");
+                        string deletedFolder = Path.GetDirectoryName(deletedPath).Replace("\\", "/");
+                        
+                        if (untrackedFolder.Equals(deletedFolder, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Same folder = Renamed
+                            gitStatuses[untrackedKey] = GitStatus.Renamed;
+                        }
+                        else
+                        {
+                            // Different folder = Moved
+                            gitStatuses[untrackedKey] = GitStatus.Moved;
+                        }
                         
                         renamesDetected++;
                         break; // Found the match, no need to check other deleted files
@@ -592,7 +665,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
 
         /// <summary>
         /// Gets the appropriate icon for a given Git status.
-        /// Priority: Untracked > Modified > Ignored > Renamed.
+        /// Priority: Untracked > Modified > Ignored > Moved > Renamed.
         /// </summary>
         private static Texture2D GetIconForStatus(GitStatus status)
         {
@@ -602,6 +675,8 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                 return config.iconModified;
             if ((status & GitStatus.Ignored) != 0)
                 return config.iconIgnored;
+            if ((status & GitStatus.Moved) != 0)
+                return config.iconMoved;
             if ((status & GitStatus.Renamed) != 0)
                 return config.iconRenamed;
             

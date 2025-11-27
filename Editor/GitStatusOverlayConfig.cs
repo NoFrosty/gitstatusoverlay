@@ -19,8 +19,11 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         [Tooltip("Icon displayed for ignored files (.gitignore).")]
         public Texture2D iconIgnored;
         
-        [Tooltip("Icon displayed for renamed/moved files.")]
+        [Tooltip("Icon displayed for renamed files (same folder, different name).")]
         public Texture2D iconRenamed;
+        
+        [Tooltip("Icon displayed for moved files (different folder).")]
+        public Texture2D iconMoved;
 
         [Header("Display Settings")]
         [Tooltip("Size of overlay icons in pixels.")]
@@ -37,7 +40,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
         [Header("Filter Settings")]
         [Tooltip("Which Git statuses should display icons. Use flags to combine multiple statuses.")]
         public GitStatus iconStatus = GitStatus.Modified | GitStatus.Staged | GitStatus.Untracked | 
-                                      GitStatus.Renamed | GitStatus.Deleted | GitStatus.Conflicted | 
+                                      GitStatus.Renamed | GitStatus.Moved | GitStatus.Deleted | GitStatus.Conflicted | 
                                       GitStatus.Error | GitStatus.Copied | GitStatus.Ignored;
 
         [Header("Folder Options")]
@@ -52,7 +55,7 @@ namespace CaesiumGames.Editor.GitStatusOverlay
             iconSize = 16;
             iconOpacity = 1.0f;
             iconStatus = GitStatus.Modified | GitStatus.Staged | GitStatus.Untracked | 
-                        GitStatus.Renamed | GitStatus.Deleted | GitStatus.Conflicted | 
+                        GitStatus.Renamed | GitStatus.Moved | GitStatus.Deleted | GitStatus.Conflicted | 
                         GitStatus.Error | GitStatus.Copied | GitStatus.Ignored;
             iconPosition = IconPosition.TopRight;
             showIconsForFolders = true;

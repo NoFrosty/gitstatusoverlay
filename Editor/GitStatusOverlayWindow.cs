@@ -113,6 +113,8 @@ namespace CaesiumGames.Editor.GitStatusOverlay
                 "Ignored Icon", config.iconIgnored, typeof(Texture2D), false);
             config.iconRenamed = (Texture2D)EditorGUILayout.ObjectField(
                 "Renamed Icon", config.iconRenamed, typeof(Texture2D), false);
+            config.iconMoved = (Texture2D)EditorGUILayout.ObjectField(
+                "Moved Icon", config.iconMoved, typeof(Texture2D), false);
             
             if (EditorGUI.EndChangeCheck())
             {
