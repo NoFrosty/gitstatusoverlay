@@ -57,24 +57,52 @@ namespace CaesiumGames.Editor.GitStatusOverlay
 
         /// <summary>
         /// Loads the overlay configuration asset, or creates one if missing.
-        /// Searches for existing GitStatusOverlayConfig asset in the project, or creates
-        /// a new one in Assets/Editor/GitStatusOverlay/ if none exists.
+        /// Priority: 1) User config in Assets, 2) Package default config, 3) Create new in Assets
         /// </summary>
         private static void LoadConfig()
         {
-            string[] guids = AssetDatabase.FindAssets("t:GitStatusOverlayConfig");
-            if (guids.Length > 0)
+            string[] guids = AssetDatabase.FindAssets("t:GitStatusOverlayConfig", new string[] { "Packages" });
+            
+            UnityEngine.Debug.Log($"[GitStatusOverlay] Found {guids.Length} GitStatusOverlayConfig assets");
+            
+            // First, try to find user config in Assets folder
+            foreach (string guid in guids)
             {
-                string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                UnityEngine.Debug.Log($"[GitStatusOverlay] Checking path: {path}");
+                if (path.StartsWith("Assets/"))
+                {
+                    config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
+                    if (config != null)
+                    {
+                        UnityEngine.Debug.Log($"[GitStatusOverlay] Loaded user config from: {path}");
+                        return;
+                    }
+                }
             }
-            else
+            
+            // Second, try to find package default config
+            foreach (string guid in guids)
             {
-                // Create default config asset
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (path.StartsWith("Packages/com.caesiumgames.gitstatusoverlay/"))
+                {
+                    config = AssetDatabase.LoadAssetAtPath<GitStatusOverlayConfig>(path);
+                    if (config != null)
+                    {
+                        UnityEngine.Debug.Log($"[GitStatusOverlay] Loaded package config from: {path}");
+                        return;
+                    }
+                }
+            }
+            
+            // Third, if no config found anywhere, create a new one in Assets
+            if (config == null)
+            {
+                UnityEngine.Debug.LogWarning("[GitStatusOverlay] No config found, creating new one in Assets/Editor/GitStatusOverlay/");
                 GitStatusOverlayConfig asset = ScriptableObject.CreateInstance<GitStatusOverlayConfig>();
                 string directory = "Assets/Editor/GitStatusOverlay";
                 
-                // Ensure directory exists
                 if (!Directory.Exists(directory))
                 {
                     Directory.CreateDirectory(directory);

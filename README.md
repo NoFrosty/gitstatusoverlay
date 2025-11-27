@@ -24,11 +24,20 @@
 
 1. **Via Unity Package Manager (UPM):**
 
-   - Copy the `com.caesiumgames.gitstatusoverlay` folder into your project's `Packages` directory.
-   - Or add the following to your `manifest.json`:
-     ```json
-     "com.caesiumgames.gitstatusoverlay": "https://github.com/CaesiumIndustries/gitstatusoverlay.git"
+   - Open the Package Manager window (`Window > Package Manager`).
+   - Click the **Add (+)** button in the toolbar.
+   - Select **Install package from git URL**.
+   - Enter the following URL:
      ```
+     https://github.com/NoFrosty/gitstatusoverlay.git
+     ```
+   - Click **Install**.
+
+   Alternatively, you can add the following to your `manifest.json`:
+
+   ```json
+   "com.caesiumgames.gitstatusoverlay": "https://github.com/NoFrosty/gitstatusoverlay.git"
+   ```
 
 2. **Manual:**
    - Download or clone this repository.
@@ -36,28 +45,35 @@
 
 ## Usage
 
-1. **Open the configuration window:**
+1. **The package automatically loads the default configuration:**
+
+   - On first import, the package uses the default config located at `Packages/com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset`
+   - You can customize settings directly in this file, or create a user override (see below)
+
+2. **Open the configuration window:**
 
    - Go to `Window > Git Status Overlay`.
 
-2. **Configure icons and options:**
+3. **Configure icons and options:**
 
    - Assign your preferred icons for each status.
-   - Adjust icon size, opacity, and position.
+   - Adjust icon sizes for list view and icon view separately.
+   - Configure icon opacity and position.
    - Toggle folder overlays and status types.
 
-3. **Configure remote tracking (optional):**
+4. **Configure remote tracking (optional):**
 
    - Enable auto-fetch to periodically check for remote changes.
    - Set the fetch interval (in seconds).
    - Enable "Show Push Available" to see files with unpushed commits.
    - Enable "Detect Potential Conflicts" to warn about files modified both locally and remotely.
 
-4. **Show the config asset in the Project window:**
+5. **Create a user config override (optional):**
 
-   - Use the "Open Config" button in the window to locate and select the config asset.
+   - If you want to create a project-specific configuration that won't be affected by package updates, create a new `GitStatusOverlayConfig` asset in your Assets folder.
+   - The system will automatically prioritize Assets-based configs over the package default.
 
-5. **Refresh Git status:**
+6. **Refresh Git status:**
    - Click "Refresh Git Status" in the window to update overlays.
 
 ## Requirements
@@ -70,6 +86,10 @@
 - You can use your own icons by assigning them in the config window.
 - The overlay supports most common Git statuses (see `GitStatus` enum for details).
 - Multiple icons will be displayed side-by-side when a file has multiple statuses.
+- **Separate icon sizes**: The package automatically detects Unity's Project window view mode:
+  - **List View** (files shown as lines): Uses `Icon Size List View` setting (8-32px, default 16px)
+  - **Icon View** (files shown with large previews): Uses `Icon Size Icon View` setting (8-64px, default 24px)
+  - You can customize each size independently to perfectly fit your workflow.
 
 ## Troubleshooting
 
