@@ -2,6 +2,8 @@
 
 **Git Status Overlay** is a Unity Editor extension that displays Git status icons directly in the Project window, helping you visualize which assets are modified, added, ignored, or renamed in your repository.
 
+![Editor overlay preview](Editor/preview.png)
+
 ## Features
 
 - Shows overlay icons for:
@@ -9,16 +11,26 @@
   - Modified files
   - Renamed/moved files
   - Ignored files
-  - Files with changes available in origin (remote)
+  - Files with changes available in remote
   - Files with local commits ready to push
-  - Warning for potential conflicts (modified locally and in origin)
+  - Warning for potential conflicts (modified locally and in remote)
   - Folders (optional)
 - Multiple icons can be displayed on the same file when applicable
 - Configurable icon, size, opacity, and position
 - Optional automatic fetching from remote repository
 - Configurable fetch interval
-- Supports Unity's package system (`Packages/com.caesiumgames.gitstatusoverlay`)
 - Editor window for easy configuration
+
+## Security
+
+This package does not perform any direct Git operations that could modify your repository. 
+It only reads information from Git to display the current status of your files.
+- No Pull
+- No Push
+- No Commit
+- ...
+The only interaction is a Fetch to check for remote changes, along with reading the output of git status.
+This ensures the extension is safe to use and non-intrusive, as it merely provides a visual overlay of your repository’s state.
 
 ## Installation
 
@@ -41,13 +53,13 @@
 
 2. **Manual:**
    - Download or clone this repository.
-   - Place the `com.caesiumgames.gitstatusoverlay` folder in your project's `Packages` directory.
+   - Place the folder in your project's `Packages` directory.
 
 ## Usage
 
 1. **The package automatically loads the default configuration:**
 
-   - On first import, the package uses the default config located at `Packages/com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset`
+   - On first import, the package uses the default config located at `.../com.caesiumgames.gitstatusoverlay/Editor/Data/GitStatusOverlayConfig.asset`
    - You can customize settings directly in this file, or create a user override (see below)
 
 2. **Open the configuration window:**
@@ -74,7 +86,7 @@
    - The system will automatically prioritize Assets-based configs over the package default.
 
 6. **Refresh Git status:**
-   - Click "Refresh Git Status" in the window to update overlays.
+   - Click "Refresh Git Status" in the window to update overlays by forcing the refresh.
 
 ## Requirements
 
@@ -97,7 +109,7 @@
 - Make sure Git is installed and accessible from the command line.
 - Only files inside the `Assets/` folder are tracked for overlays.
 - Make sure your project is using Git.
-- Auto-fetch requires a valid remote repository connection.
+- Auto-fetch requires a valid remote repository connection and is by default disable.
 
 ## Icons Attribution
 
@@ -114,11 +126,11 @@ The following icons from Flaticon are used in this project. Colors may have been
 
 ## License
 
-All Rights Reserved - Caesium Games
+[![All Rights Reserved Caesium Games](https://img.shields.io/badge/All_Rights_Reserved-caesiumgames.com-6036C1?style=for-the-badge&logo=firefox&logoColor=white)](https://caesiumgames.com)
 
 ## Credits
 
-Developed by Caesium Games.
+[![Developed by Calvin Dogus](https://img.shields.io/badge/Developed_by-calvindogus.dev-FF4297?style=for-the-badge&logo=firefox&logoColor=white)](https://calvindogus.dev)
 
 ---
 
