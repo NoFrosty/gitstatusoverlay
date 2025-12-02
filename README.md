@@ -126,11 +126,12 @@ The following icons from Flaticon are used in this project. Colors may have been
 
 ## License
 
-[![All Rights Reserved Caesium Games](https://img.shields.io/badge/All_Rights_Reserved-caesiumgames.com-6036C1?style=for-the-badge&logo=firefox&logoColor=white)](https://caesiumgames.com)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.
 
 ## Credits
 
 [![Developed by Calvin Dogus](https://img.shields.io/badge/Developed_by-calvindogus.dev-FF4297?style=for-the-badge&logo=firefox&logoColor=white)](https://calvindogus.dev)
+[![Caesium Games](https://img.shields.io/badge/caesiumgames.com-6036C1?style=for-the-badge&logo=firefox&logoColor=white)](https://caesiumgames.com)
 
 ---
 
